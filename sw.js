@@ -1,4 +1,4 @@
-const CACHE_NAME = "almurad-v2"; // غيرنا الإصدار
+const CACHE_NAME = "almurad-v3"; // غيّرنا الإصدار
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -9,7 +9,7 @@ self.addEventListener("install", event => {
         "./products.html",
         "./cashier.html",
         "./debts.html",
-        // ❌ لا تخزن accounts.html
+        "./accounts.html",   // ✅ خزن الحسابات
         "./profits.html",
         "./manifest.json"
       ]);
@@ -34,11 +34,6 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("fetch", event => {
-  // 🚫 لا تستخدم الكاش لصفحة الحسابات
-  if (event.request.url.includes("accounts")) {
-    return;
-  }
-
   event.respondWith(
     caches.match(event.request).then(response => {
       return response || fetch(event.request);
