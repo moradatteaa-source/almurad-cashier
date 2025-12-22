@@ -291,7 +291,7 @@ const restEl=document.getElementById("rest");
 const restLine=document.getElementById("restLine");
 
 document.getElementById("date").textContent=new Date().toLocaleDateString("ar-EG");
-let invoice = Number(localStorage.getItem("invoiceNo")) || Date.now();
+let invoice = Number(localStorage.getItem("invoiceNo")) || 1;
 document.getElementById("invoice").textContent = invoice;
 
 
