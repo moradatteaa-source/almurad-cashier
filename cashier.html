@@ -291,8 +291,9 @@ const restEl=document.getElementById("rest");
 const restLine=document.getElementById("restLine");
 
 document.getElementById("date").textContent=new Date().toLocaleDateString("ar-EG");
-let invoice=Number(localStorage.getItem("invoiceNo")||1);
-document.getElementById("invoice").textContent=invoice;
+let invoice = Number(localStorage.getItem("invoiceNo")) || Date.now();
+document.getElementById("invoice").textContent = invoice;
+
 
 let isCredit=false;
 
@@ -387,6 +388,23 @@ function setCredit(btn){
   btn.classList.add("active");
   calc();
 }
+function resetRows(){
+  for(let i = 1; i < table.rows.length; i++){
+    const r = table.rows[i];
+
+    // اسم المنتج
+    r.cells[0].querySelector("input").value = "";
+
+    // السعر
+    r.cells[1].textContent = "0 د.ع";
+
+    // الكمية
+    r.cells[2].querySelector("input").value = 1;
+
+    // المجموع
+    r.cells[3].textContent = "0 د.ع";
+  }
+}
 
 // حفظ
 function saveInvoice(){
@@ -423,32 +441,35 @@ date: new Date().toLocaleDateString("en-CA"), // YYYY-MM-DD محلي
     debtor
   });
   localStorage.setItem("invoices",JSON.stringify(invs));
-  localStorage.setItem("invoiceNo",invoice+1);
-  alert("تم الحفظ ✅");
-  // 🔁 إرجاع وضع الدفع إلى (نقد) بعد الحفظ
-isCredit = false;
+// خزّن الرقم الجديد
+// خزّن الرقم الجديد
+localStorage.setItem("invoiceNo", invoice + 1);
 
+// حدّث الرقم بالذاكرة
+invoice++;
+
+// حدّث رقم الفاتورة فورًا
+requestAnimationFrame(() => {
+  document.getElementById("invoice").textContent = invoice;
+});
+
+// رجّع الوضع نقد
+isCredit = false;
 paidEl.disabled = true;
 paidEl.value = 0;
-
 document.getElementById("creditBox").style.display = "none";
 restLine.style.display = "none";
 
-// تفعيل زر نقد فقط
 document.querySelectorAll(".payBtn").forEach(b => b.classList.remove("active"));
 document.querySelector(".payBtn").classList.add("active");
 
-table.innerHTML=`
-<tr>
-  <th>المنتج</th>
-  <th>السعر</th>
-  <th>الكمية</th>
-  <th>المجموع</th>
-</tr>`;
+// صفّر الصفوف بدون حذفها
+resetRows();
 
-paidEl.value=0;
-grandEl.textContent=f(0);
-restEl.textContent=f(0);
+// صفّر الإجماليات
+grandEl.textContent = f(0);
+restEl.textContent = f(0);
+
 }
 addRow();
 addRow();
