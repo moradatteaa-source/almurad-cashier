@@ -97,7 +97,23 @@ th{background:#eaf0f6;}
 </div>
 
 <script>
-// 🔗 ربط مع الكاشير والمخزن
+// ================= 🔐 حماية الصفحة =================
+const PASSWORD = "1234"; // ← غير كلمة السر هنا
+
+(function protectPage(){
+  const allowed = sessionStorage.getItem("profit_access");
+  if(allowed === "true") return;
+
+  const pass = prompt("🔐 أدخل كلمة السر لعرض الأرباح:");
+  if(pass === PASSWORD){
+    sessionStorage.setItem("profit_access","true");
+  }else{
+    alert("❌ كلمة السر غير صحيحة");
+    window.location.href = "dashboard.html";
+  }
+})();
+
+// ================= 💰 حساب الأرباح =================
 const invoices = JSON.parse(localStorage.getItem("invoices") || "[]");
 const products = JSON.parse(localStorage.getItem("products") || "[]");
 
