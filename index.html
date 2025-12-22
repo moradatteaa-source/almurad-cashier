@@ -207,7 +207,8 @@ if ("serviceWorker" in navigator) {
     }
 
     // سجّل الجديد
-    navigator.serviceWorker.register("sw.js").then(() => {
+navigator.serviceWorker.register("/almurad-cashier/sw.js")
+.then(() => {
       console.log("Service Worker registered cleanly");
     });
   });
