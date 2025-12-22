@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>المنتجات</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
@@ -56,6 +56,19 @@ button{
 .delete{
   background:#c0392b;
 }
+/* منع التقريب التلقائي عند الضغط على الحقول */
+input,
+select,
+textarea {
+  font-size: 16px !important;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* تحسين سلوك اللمس ومنع zoom غير مرغوب */
+html, body {
+  touch-action: manipulation;
+}
+
 </style>
 </head>
 
