@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الكاشير</title>
+
+<style>
+    .product{position:relative}
+.searchInput{
+  width:100%;
+  padding:8px;
+  border-radius:6px;
+  border:1px solid #ccc;
+}
+.dropdown{
+  position:absolute;
+  top:100%;
+  right:0;
+  left:0;
+  background:white;
+  border:1px solid #ccc;
+  max-height:160px;
+  overflow-y:auto;
+  display:none;
+  z-index:50;
+}
+.dropdown div{
+  padding:7px;
+  cursor:pointer;
+}
+.dropdown div:hover{
+  background:#eee;
+}
+
+:root{
+  --blue:#043B64;
+  --orange:#FF6B2D;
+  --bg:#f4f6fa;
+  --gray:#eee;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Tajawal, Tahoma, sans-serif;
+  background:var(--bg);
+}
+header{
+  background:var(--blue);
+  color:white;
+  padding:16px;
+  text-align:center;
+  font-size:18px;
+}
+.container{
+  max-width:1100px;
+  margin:auto;
+  padding:12px;
+}
+.info{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:10px;
+  font-size:14px;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:white;
+}
+th,td{
+  border:1px solid #ddd;
+  padding:6px;
+  text-align:center;
+}
+th{
+  background:#eef3f7;
+}
+td.product{width:45%}
+td.qty{width:10%}
+
+select,input{
+  width:100%;
+  padding:7px;
+  border-radius:6px;
+  border:1px solid #ccc;
+}
+
+.totalBox{
+  margin-top:12px;
+  background:white;
+  padding:14px;
+  border-radius:12px;
+}
+.grand{
+  color:var(--orange);
+  font-size:22px;
+  font-weight:bold;
+}
+
+.payButtons{
+  display:flex;
+  gap:10px;
+  margin:12px 0;
+}
+.payBtn{
+  flex:1;
+  padding:12px;
+  border-radius:12px;
+  border:2px solid var(--blue);
+  background:white;
+  color:var(--blue);
+  font-size:16px;
+  cursor:pointer;
+}
+.payBtn.active{
+  background:var(--blue);
+  color:white;
+}
+
+#creditBox{
+  display:none;
+  margin-top:10px;
+  background:#fdfdfd;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid #ddd;
+}
+.creditGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.creditGrid label{
+  font-size:13px;
+  color:#555;
+}
+
+button.save{
+  width:100%;
+  margin-top:15px;
+  padding:14px;
+  font-size:17px;
+  background:var(--orange);
+  color:white;
+  border:none;
+  border-radius:14px;
+}
+@media(max-width:700px){
+  .creditGrid{grid-template-columns:1fr}
+  th,td{font-size:12px}
+}
+</style>
+</head>
+
+<body>
+
+<header>🧾 الكاشير</header>
+
+<div class="container">
+
+<div class="info">
+  <div>📅 <span id="date"></span></div>
+  <div>🧾 فاتورة #<span id="invoice"></span></div>
+</div>
+<button onclick="addRow()" style="
+  margin-bottom:10px;
+  background:#27ae60;
+  color:white;
+  border:none;
+  border-radius:10px;
+  padding:10px 14px;
+  font-size:15px;
+  cursor:pointer;
+">
+➕ إضافة منتج
+</button>
+
+<!-- جدول -->
+<table id="table">
+<tr>
+  <th>المنتج</th>
+  <th>السعر</th>
+  <th>الكمية</th>
+  <th>المجموع</th>
+</tr>
+</table>
+
+<!-- الإجماليات -->
+<div class="totalBox">
+  <div>المجموع الكلي: <span id="grand" class="grand">0 د.ع</span></div>
+
+  <div class="payButtons">
+    <button class="payBtn active" onclick="setCash(this)">💵 نقد</button>
+    <button class="payBtn" onclick="setCredit(this)">📄 دين</button>
+  </div>
+
+  <div>
+    المدفوع:
+    <input type="number" id="paid" disabled>
+  </div>
+
+  <div id="restLine" style="margin-top:6px;">
+    الباقي (دين): <strong id="rest">0 د.ع</strong>
+  </div>
+
+  <!-- بيانات الدين -->
+  <div id="creditBox">
+    <div class="creditGrid">
+      <div>
+        <label>اسم المديون</label>
+        <input id="debtorName" placeholder="اسم الزبون">
+      </div>
+      <div>
+        <label>رقم الهاتف</label>
+        <input id="debtorPhone" placeholder="07xxxxxxxx">
+      </div>
+      <div style="grid-column:1/-1">
+        <label>ملاحظات</label>
+        <input id="debtorNote" placeholder="ملاحظات">
+      </div>
+    </div>
+  </div>
+</div>
+
+<button class="save" onclick="saveInvoice()">💾 حفظ الفاتورة</button>
+
+</div>
+
+<script>
+    document.addEventListener("click", e=>{
+  document.querySelectorAll(".dropdown").forEach(d=>{
+    if(!d.contains(e.target) && !d.previousElementSibling.contains(e.target)){
+      d.style.display="none";
+    }
+  });
+});
+function showAllProducts(input){
+  const box = input.nextElementSibling;
+  box.innerHTML = "";
+
+  products.forEach(p=>{
+    const d = document.createElement("div");
+    d.textContent = p.name;
+    d.onclick = ()=>{
+      input.value = p.name;
+      box.style.display = "none";
+      const row = input.closest("tr");
+      row.cells[1].textContent = f(p.sell);
+      calc();
+    };
+    box.appendChild(d);
+  });
+
+  box.style.display = "block";
+}
+
+    function filterProducts(input){
+  const box=input.nextElementSibling;
+  box.innerHTML="";
+  const val=input.value.trim();
+  if(!val){box.style.display="none";return;}
+
+  products
+.filter(p=>p.name.toLowerCase().includes(val.toLowerCase()))
+    .forEach(p=>{
+      const d=document.createElement("div");
+      d.textContent=p.name;
+      d.onclick=()=>{
+        input.value=p.name;
+        box.style.display="none";
+        const row=input.closest("tr");
+        row.cells[1].textContent=f(p.sell);
+        calc();
+      };
+      box.appendChild(d);
+    });
+
+  box.style.display="block";
+}
+
+// أدوات الدينار
+const f=n=>Number(n||0).toLocaleString("en-US")+" د.ع";
+const p=v=>Number(String(v).replace(/[^0-9]/g,""))||0;
+
+const products=JSON.parse(localStorage.getItem("products")||"[]");
+const table=document.getElementById("table");
+const grandEl=document.getElementById("grand");
+const paidEl=document.getElementById("paid");
+const restEl=document.getElementById("rest");
+const restLine=document.getElementById("restLine");
+
+document.getElementById("date").textContent=new Date().toLocaleDateString("ar-EG");
+let invoice=Number(localStorage.getItem("invoiceNo")||1);
+document.getElementById("invoice").textContent=invoice;
+
+let isCredit=false;
+
+// إنشاء الصفوف
+function addRow(){
+  const r = table.insertRow();
+  r.innerHTML = `
+    <td class="product">
+<input 
+  class="searchInput"
+  placeholder="اكتب اسم المنتج"
+  onfocus="showAllProducts(this)"
+  oninput="filterProducts(this)"
+>
+      <div class="dropdown"></div>
+    </td>
+    <td>0 د.ع</td>
+    <td class="qty">
+      <input type="number" min="1" value="1" oninput="calc()">
+    </td>
+    <td>0 د.ع</td>
+    <td>
+      <button onclick="removeRow(this)" style="
+        background:#c0392b;
+        color:white;
+        border:none;
+        border-radius:6px;
+        padding:6px 10px;
+        cursor:pointer;
+      ">✖</button>
+    </td>
+  `;
+}
+function removeRow(btn){
+  const row = btn.closest("tr");
+  if(table.rows.length <= 2){
+    alert("لا يمكن حذف آخر سطر");
+    return;
+  }
+  row.remove();
+  calc();
+}
+
+
+function updateRow(sel){
+  const r=sel.parentElement.parentElement;
+  const prod=products.find(x=>x.name===sel.value);
+  r.cells[1].textContent=prod?f(prod.sell):f(0);
+  calc();
+}
+
+function calc(){
+  let total=0;
+for(let i=1;i<table.rows.length;i++){
+    const r=table.rows[i];
+    const price=p(r.cells[1].textContent);
+    const qty=Number(r.cells[2].children[0].value||0);
+    const sum=price*qty;
+    r.cells[3].textContent=f(sum);
+    total+=sum;
+  }
+  grandEl.textContent=f(total);
+
+  if(!isCredit){
+    paidEl.value=total;
+    restEl.textContent=f(0);
+  }else{
+    restEl.textContent=f(total-Number(paidEl.value||0));
+  }
+}
+
+paidEl.oninput=calc;
+
+// أزرار الدفع
+function setCash(btn){
+  isCredit=false;
+  paidEl.disabled=true;
+  document.getElementById("creditBox").style.display="none";
+  restLine.style.display="none";
+  document.querySelectorAll(".payBtn").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  calc();
+}
+
+function setCredit(btn){
+  isCredit=true;
+  paidEl.disabled=false;
+  paidEl.value=0;
+  document.getElementById("creditBox").style.display="block";
+  restLine.style.display="block";
+  document.querySelectorAll(".payBtn").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  calc();
+}
+
+// حفظ
+function saveInvoice(){
+  const items=[];
+for(let i=1;i<table.rows.length;i++){
+    const r=table.rows[i];
+    const name=r.cells[0].children[0].value;
+    if(name){
+      const prod=products.find(x=>x.name===name);
+      const qty=Number(r.cells[2].children[0].value);
+      if(qty>prod.qty){alert("الكمية غير كافية: "+name);return;}
+      items.push({product:name,qty,price:prod.sell,total:prod.sell*qty});
+      prod.qty-=qty;
+    }
+  }
+  if(!items.length){alert("ماكو مواد");return;}
+
+  let debtor=null;
+  if(isCredit){
+    if(!debtorName.value.trim()){alert("اسم المديون مطلوب");return;}
+    debtor={name:debtorName.value,phone:debtorPhone.value,note:debtorNote.value};
+  }
+
+  localStorage.setItem("products",JSON.stringify(products));
+  const invs=JSON.parse(localStorage.getItem("invoices")||"[]");
+  invs.push({
+    invoiceNo:invoice,
+date: new Date().toLocaleDateString("en-CA"), // YYYY-MM-DD محلي
+    items,
+    grand:p(grandEl.textContent),
+    paid:Number(paidEl.value||0),
+    rest:isCredit?p(restEl.textContent):0,
+    payType:isCredit?"دين":"نقد",
+    debtor
+  });
+  localStorage.setItem("invoices",JSON.stringify(invs));
+  localStorage.setItem("invoiceNo",invoice+1);
+  alert("تم الحفظ ✅");
+  // 🔁 إرجاع وضع الدفع إلى (نقد) بعد الحفظ
+isCredit = false;
+
+paidEl.disabled = true;
+paidEl.value = 0;
+
+document.getElementById("creditBox").style.display = "none";
+restLine.style.display = "none";
+
+// تفعيل زر نقد فقط
+document.querySelectorAll(".payBtn").forEach(b => b.classList.remove("active"));
+document.querySelector(".payBtn").classList.add("active");
+
+table.innerHTML=`
+<tr>
+  <th>المنتج</th>
+  <th>السعر</th>
+  <th>الكمية</th>
+  <th>المجموع</th>
+</tr>`;
+
+paidEl.value=0;
+grandEl.textContent=f(0);
+restEl.textContent=f(0);
+}
+addRow();
+addRow();
+
+</script>
+
+</body>
+</html>

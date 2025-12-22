@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الحسابات</title>
+
+<style>
+:root{
+  --blue:#043B64;
+  --orange:#FF6B2D;
+  --bg:#f4f6fa;
+}
+body{
+  margin:0;
+  font-family:Tahoma;
+  background:var(--bg);
+}
+header{
+  background:var(--blue);
+  color:white;
+  padding:12px;
+  text-align:center;
+  font-size:18px;
+}
+.container{padding:10px;}
+.box{
+  background:white;
+  padding:10px;
+  margin-bottom:10px;
+  border-radius:8px;
+}
+h3{
+  margin:5px 0;
+  color:var(--blue);
+  font-size:15px;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+th,td{
+  border:1px solid #ddd;
+  padding:6px;
+  text-align:center;
+}
+th{background:#eaf0f6;}
+.total{
+  font-weight:bold;
+  color:var(--orange);
+}
+button{
+  padding:6px 10px;
+  border:none;
+  border-radius:6px;
+  background:var(--orange);
+  color:white;
+  cursor:pointer;
+}
+button.gray{
+  background:#ccc;
+  color:#333;
+}
+</style>
+</head>
+
+<body>
+
+<header>📊 الحسابات</header>
+
+<div class="container">
+
+  <div class="box">
+    <h3>📅 تصفية حسب التاريخ</h3>
+
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      من:
+      <input type="date" id="fromDate">
+      إلى:
+      <input type="date" id="toDate">
+      <button onclick="filterByRange()">تطبيق</button>
+    </div>
+
+    <hr>
+
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button onclick="quickFilter('today')">اليوم</button>
+      <button onclick="quickFilter('week')">هذا الأسبوع</button>
+      <button onclick="quickFilter('month')">هذا الشهر</button>
+      <button onclick="quickFilter('year')">هذه السنة</button>
+      <button class="gray" onclick="quickFilter('all')">الكل</button>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>🧾 كل الفواتير</h3>
+    <table id="table">
+      <tr>
+        <th>رقم الفاتورة</th>
+        <th>التاريخ</th>
+        <th>مجموع الفاتورة</th>
+        <th>المدفوع</th>
+        <th>الدين</th>
+      </tr>
+    </table>
+  </div>
+
+</div>
+
+<script>
+// ===== البيانات =====
+const invoices = JSON.parse(localStorage.getItem("invoices") || "[]");
+const table = document.getElementById("table");
+
+// ===== تنسيق إنكليزي =====
+const fmt = n => Number(n || 0).toLocaleString("en-US");
+const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
+
+// ===== عرض الجدول =====
+function render(data){
+  table.querySelectorAll("tr:not(:first-child)").forEach(r=>r.remove());
+
+  if(!data.length){
+    table.insertRow().innerHTML =
+      `<td colspan="5">لا توجد فواتير</td>`;
+    return;
+  }
+
+  let total=0, paid=0, debt=0;
+
+  data.forEach(inv=>{
+    total += +inv.grand;
+    paid  += +inv.paid;
+    debt  += +inv.rest;
+
+    table.insertRow().innerHTML = `
+      <td>${fmt(inv.invoiceNo)}</td>
+      <td>${inv.date}</td>
+      <td>${fmt(inv.grand)} د.ع</td>
+      <td>${fmt(inv.paid)} د.ع</td>
+      <td>${fmt(inv.rest)} د.ع</td>
+    `;
+  });
+
+  table.insertRow().innerHTML = `
+    <td colspan="2"><strong>المجموع</strong></td>
+    <td class="total">${fmt(total)} د.ع</td>
+    <td class="total">${fmt(paid)} د.ع</td>
+    <td class="total">${fmt(debt)} د.ع</td>
+  `;
+}
+
+// ===== فلترة من → إلى =====
+function filterByRange(){
+  if(!fromDate.value || !toDate.value){
+    alert("اختَر تاريخ من وإلى");
+    return;
+  }
+  render(invoices.filter(i =>
+    i.date >= fromDate.value && i.date <= toDate.value
+  ));
+}
+
+// ===== فلاتر سريعة =====
+function quickFilter(type){
+  const n = new Date();
+  let s,e;
+
+  if(type==="today"){
+    s = e = today();
+  }
+  if(type==="week"){
+    const d = new Date(n.setDate(n.getDate()-n.getDay()));
+    s = d.toLocaleDateString("en-CA");
+    e = today();
+  }
+  if(type==="month"){
+    s = new Date(n.getFullYear(), n.getMonth(), 1)
+          .toLocaleDateString("en-CA");
+    e = today();
+  }
+  if(type==="year"){
+    s = new Date(n.getFullYear(), 0, 1)
+          .toLocaleDateString("en-CA");
+    e = today();
+  }
+  if(type==="all"){
+    render(invoices);
+    return;
+  }
+
+  render(invoices.filter(i => i.date >= s && i.date <= e));
+}
+
+// ===== تحميل أولي =====
+render(invoices);
+</script>
+
+</body>
+</html>
