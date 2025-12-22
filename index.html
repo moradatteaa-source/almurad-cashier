@@ -197,9 +197,23 @@ function go(page){
 
 <script>
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js");
+  window.addEventListener("load", async () => {
+    const reg = await navigator.serviceWorker.getRegistration();
+
+    // إذا كان أكو SW قديم → احذفه
+    if (reg) {
+      await reg.unregister();
+      console.log("Old Service Worker removed");
+    }
+
+    // سجّل الجديد
+    navigator.serviceWorker.register("sw.js").then(() => {
+      console.log("Service Worker registered cleanly");
+    });
+  });
 }
 </script>
+
 
 </body>
 </html>

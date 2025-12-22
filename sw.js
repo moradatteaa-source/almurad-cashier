@@ -1,17 +1,18 @@
-const CACHE_NAME = "almurad-app-v6";
+const CACHE_NAME = "almurad-app-v7";
+const BASE = "/REPO_NAME"; // 👈 اسم الريبو
 
 const FILES = [
-  "./",
-  "./index.html",
-  "./dashboard.html",
-  "./products.html",
-  "./debts.html",
-  "./accounts.html",
-  "./profits.html",
-  "./manifest.json",
-  "./almurad-logo.png",
-  "./icon-192.png",
-  "./icon-512.png"
+  BASE + "/",
+  BASE + "/index.html",
+  BASE + "/dashboard.html",
+  BASE + "/products.html",
+  BASE + "/debts.html",
+  BASE + "/accounts.html",
+  BASE + "/profits.html",
+  BASE + "/manifest.json",
+  BASE + "/almurad-logo.png",
+  BASE + "/icon-192.png",
+  BASE + "/icon-512.png"
 ];
 
 // ================= INSTALL =================
@@ -34,15 +35,14 @@ self.addEventListener("activate", event => {
 
 // ================= FETCH =================
 self.addEventListener("fetch", event => {
-
   const url = event.request.url;
 
-  // ❌ لا تكاش صفحة الكاشير نهائيًا
+  // ❌ لا تكاش الكاشير نهائيًا
   if (url.includes("cashier.html")) {
-    return; // خلي المتصفح يتعامل وياها مباشرة
+    return;
   }
 
-  // صفحات HTML الأخرى → Network First
+  // HTML → Network First
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request)
@@ -53,12 +53,15 @@ self.addEventListener("fetch", event => {
           });
           return res;
         })
-        .catch(() => caches.match(event.request) || caches.match("./dashboard.html"))
+        .catch(() =>
+          caches.match(event.request) ||
+          caches.match(BASE + "/dashboard.html")
+        )
     );
     return;
   }
 
-  // باقي الملفات (صور / css / js) → Cache First
+  // Assets → Cache First
   event.respondWith(
     caches.match(event.request).then(cached => cached || fetch(event.request))
   );
