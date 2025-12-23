@@ -1,31 +1,28 @@
-const CACHE_NAME = "almurad-app-v7";
-const BASE = "/REPO_NAME"; // 👈 اسم الريبو
+const CACHE_NAME = "almurad-app-v9";
 
 const FILES = [
-  BASE + "/",
-  BASE + "/index.html",
-  BASE + "/dashboard.html",
-  BASE + "/products.html",
-  BASE + "/debts.html",
-  BASE + "/accounts.html",
-  BASE + "/profits.html",
-  BASE + "/manifest.json",
-  BASE + "/almurad-logo.png",
-  BASE + "/icon-192.png",
-  BASE + "/icon-512.png"
+  "./",
+  "./index.html",
+  "./cashier.html",
+  "./products.html",
+  "./debts.html",
+  "./accounts.html",
+  "./profits.html",
+  "./manifest.json",
+  "./almurad-logo.png"
 ];
 
-// ================= INSTALL =================
-self.addEventListener("install", event => {
-  event.waitUntil(
+// INSTALL
+self.addEventListener("install", e => {
+  e.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(FILES))
   );
   self.skipWaiting();
 });
 
-// ================= ACTIVATE =================
-self.addEventListener("activate", event => {
-  event.waitUntil(
+// ACTIVATE
+self.addEventListener("activate", e => {
+  e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.map(k => k !== CACHE_NAME && caches.delete(k)))
     )
@@ -33,36 +30,13 @@ self.addEventListener("activate", event => {
   self.clients.claim();
 });
 
-// ================= FETCH =================
-self.addEventListener("fetch", event => {
-  const url = event.request.url;
-
-  // ❌ لا تكاش الكاشير نهائيًا
-  if (url.includes("cashier.html")) {
-    return;
-  }
-
-  // HTML → Network First
-  if (event.request.mode === "navigate") {
-    event.respondWith(
-      fetch(event.request)
-        .then(res => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, copy);
-          });
-          return res;
-        })
-        .catch(() =>
-          caches.match(event.request) ||
-          caches.match(BASE + "/dashboard.html")
-        )
-    );
-    return;
-  }
-
-  // Assets → Cache First
-  event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
+// FETCH (Offline First)
+self.addEventListener("fetch", e => {
+  e.respondWith(
+    caches.match(e.request).then(res => {
+      return res || fetch(e.request).catch(() =>
+        caches.match("./index.html")
+      );
+    })
   );
 });
