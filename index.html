@@ -1,218 +1,141 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>داشبورد المراد</title>
+  <meta charset="UTF-8">
+  <title>تسجيل الدخول - المراد</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- PWA -->
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#FF6B2D">
-
-<style>
-:root{
-  --blue:#043B64;
-  --orange:#FF6B2D;
-  --green:#27ae60;
-  --red:#c0392b;
-  --bg:#f4f6fa;
-}
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:Tajawal, Tahoma, sans-serif;
-  background:var(--bg);
-}
-
-/* ===== Header ===== */
-header{
-  background:linear-gradient(135deg,var(--orange),#e85d1c);
-  color:white;
-  padding:20px;
-}
-
-.header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-}
-
-.header-left{
-  display:flex;
-  align-items:center;
-}
-
-.logo{
-  height:90px;
-  object-fit:contain;
-  filter: brightness(0) invert(1);
-}
-
-.header-center{
-  flex:1;
-  text-align:center;
-}
-
-header h1{
-  margin:0;
-  font-size:22px;
-}
-header p{
-  margin:5px 0 0;
-  font-size:13px;
-  opacity:0.9;
-}
-
-/* ===== Container ===== */
-.container{
-  max-width:1200px;
-  margin:auto;
-  padding:20px;
-}
-
-/* ===== Grid ===== */
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:20px;
-}
-
-/* ===== Card ===== */
-.card{
-  background:white;
-  border-radius:18px;
-  padding:20px;
-  cursor:pointer;
-  box-shadow:0 8px 20px rgba(0,0,0,0.08);
-  transition:0.25s;
-  position:relative;
-  overflow:hidden;
-}
-.card:hover{
-  transform:translateY(-5px);
-}
-
-.card::before{
-  content:"";
-  position:absolute;
-  top:0;
-  right:0;
-  width:6px;
-  height:100%;
-}
-
-.products::before{background:var(--blue);}
-.cashier::before{background:var(--orange);}
-.debts::before{background:var(--red);}
-.accounts::before{background:var(--green);}
-
-.icon{
-  font-size:36px;
-  margin-bottom:10px;
-}
-.title{
-  font-size:18px;
-  font-weight:bold;
-  color:#222;
-}
-.desc{
-  font-size:13px;
-  color:#666;
-  margin-top:4px;
-}
-
-.footer{
-  text-align:center;
-  color:#777;
-  margin:30px 0 15px;
-  font-size:13px;
-}
-
-@media(max-width:600px){
-  .logo{height:60px}
-  header h1{font-size:18px}
-  header p{font-size:12px}
-}
-</style>
-</head>
-
-<body>
-
-<header class="header">
-  <div class="header-center">
-    <h1>📱 نظام المراد</h1>
-    <p>إدارة متكاملة – أوفلاين – سريع وآمن</p>
-  </div>
-
-  <div class="header-left">
-    <img src="almurad-logo.png" class="logo">
-  </div>
-</header>
-
-<div class="container">
-  <div class="grid">
-
-    <div class="card products" onclick="go('products.html')">
-      <div class="icon">📦</div>
-      <div class="title">إدارة المنتجات</div>
-      <div class="desc">إضافة – تعديل – المخزن</div>
-    </div>
-
-    <div class="card cashier" onclick="go('cashier.html')">
-      <div class="icon">🧾</div>
-      <div class="title">الكاشير</div>
-      <div class="desc">الفواتير – نقد / دين</div>
-    </div>
-
-    <div class="card debts" onclick="go('debts.html')">
-      <div class="icon">📄</div>
-      <div class="title">الديون</div>
-      <div class="desc">المديونين – التفاصيل</div>
-    </div>
-
-    <div class="card accounts" onclick="go('accounts.html')">
-      <div class="icon">📊</div>
-      <div class="title">الحسابات</div>
-      <div class="desc">الأرباح – التقارير</div>
-    </div>
-
-    <div class="card accounts" onclick="go('profits.html')">
-      <div class="icon">💰</div>
-      <div class="title">الأرباح</div>
-      <div class="desc">يومي – شهري – حسب التاريخ</div>
-    </div>
-
-  </div>
-</div>
-
-<div class="footer">
-  © نظام المراد – كاشير أوفلاين احترافي
-</div>
-
-<script>
-function go(page){
-  window.location.href = page;
-}
-</script>
-
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", async () => {
-    const reg = await navigator.serviceWorker.getRegistration();
-
-    // إذا كان أكو SW قديم → احذفه
-    if (reg) {
-      await reg.unregister();
-      console.log("Old Service Worker removed");
+  <style>
+    body {
+      font-family: Tahoma, Arial;
+      background: #f4f6fa;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
 
-    // سجّل الجديد
-navigator.serviceWorker.register("/almurad-cashier/sw.js")
-.then(() => {
-      console.log("Service Worker registered cleanly");
-    });
-  });
+    .login-box {
+      background: #fff;
+      padding: 25px;
+      width: 100%;
+      max-width: 350px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      text-align: center;
+      color: #043B64;
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 12px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #FF6B2D;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .error {
+      color: red;
+      text-align: center;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="login-box">
+  <h2>تسجيل الدخول</h2>
+
+  <input type="email" id="email" placeholder="البريد الإلكتروني">
+  <input type="password" id="password" placeholder="كلمة المرور">
+
+  <button onclick="login()">دخول</button>
+
+  <div class="error" id="error"></div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  // ✅ Firebase Config الحقيقي مالك
+  const firebaseConfig = {
+    apiKey: "AIzaSyDqudXSSUtolKjyN574DtiS592BKDxrrAo",
+    authDomain: "al-murad-cashier.firebaseapp.com",
+    projectId: "al-murad-cashier",
+    storageBucket: "al-murad-cashier.firebasestorage.app",
+    messagingSenderId: "870371737962",
+    appId: "1:870371737962:web:b66a33a23273846c41e513"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  window.login = async function () {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    const errorDiv = document.getElementById("error");
+
+    errorDiv.innerText = "";
+
+    try {
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      const uid = userCred.user.uid;
+
+      const snap = await getDoc(doc(db, "users", uid));
+
+      if (!snap.exists()) {
+        errorDiv.innerText = "لا توجد صلاحيات لهذا المستخدم";
+        return;
+      }
+
+const data = snap.data();
+const roles = data.roles || {};
+
+// دعم الأدمن القديم
+if (data.role === "admin") {
+  roles.admin = true;
 }
+
+if (
+  roles.admin ||
+  roles.cashier ||
+  roles.store ||
+  roles.accountant
+) {
+  window.location.href = "dashboard.html";
+} else {
+  errorDiv.innerText = "لا توجد صلاحيات مفعلة لهذا المستخدم";
+}
+
+
+
+
+    } catch (e) {
+      errorDiv.innerText = "الإيميل أو كلمة المرور غير صحيحة";
+      console.error(e);
+    }
+  };
 </script>
 
 

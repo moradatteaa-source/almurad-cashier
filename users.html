@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>إدارة المستخدمين</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{font-family:Tajawal;background:#f4f6fa;margin:0}
+.box{max-width:500px;margin:30px auto;background:#fff;padding:20px;border-radius:10px}
+input,select,button{width:100%;margin-bottom:10px;padding:10px}
+button{background:#FF6B2D;color:#fff;border:none;border-radius:6px}
+</style>
+</head>
+<body>
+
+<div class="box">
+  <h3>➕ إضافة / تعديل مستخدم</h3>
+
+<input id="uid" placeholder="UID المستخدم" onblur="loadUser()">
+  <input id="name" placeholder="اسم المستخدم">
+<label><input type="checkbox" id="cashier"> كاشير</label><br>
+<label><input type="checkbox" id="store"> مخزن</label><br>
+<label><input type="checkbox" id="accountant"> محاسب</label><br>
+<label><input type="checkbox" id="admin"> أدمن</label>
+
+
+  <button onclick="saveUser()">حفظ المستخدم</button>
+  <div id="msg"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDqudXSSUtolKjyN574DtiS592BKDxrrAo",
+  authDomain: "al-murad-cashier.firebaseapp.com",
+  projectId: "al-murad-cashier"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.saveUser = async function(){
+  const uid = uidInput.value.trim();
+  const name = nameInput.value.trim();
+const roles = {
+  cashier: document.getElementById("cashier").checked,
+  store: document.getElementById("store").checked,
+  accountant: document.getElementById("accountant").checked,
+  admin: document.getElementById("admin").checked
+};
+
+  if(!uid || !name){
+    msg.innerText = "أدخل كل البيانات";
+    return;
+  }
+
+await setDoc(
+  doc(db,"users",uid),
+  {
+    name,
+    roles,
+    storeId: "center_1"
+  },
+  { merge: true } // ⭐ مهم
+);
+
+
+
+  msg.innerText = "تم حفظ المستخدم بنجاح ✅";
+};
+window.loadUser = async function(){
+  const uid = uidInput.value.trim();
+  if(!uid) return;
+
+  const snap = await getDoc(doc(db,"users",uid));
+  if(!snap.exists()){
+    msg.innerText = "❌ المستخدم غير موجود";
+    return;
+  }
+
+  const data = snap.data();
+
+  // تعبئة الاسم
+  nameInput.value = data.name || "";
+
+  // تعبئة الصلاحيات
+  document.getElementById("cashier").checked    = data.roles?.cashier    || false;
+  document.getElementById("store").checked      = data.roles?.store      || false;
+  document.getElementById("accountant").checked = data.roles?.accountant || false;
+  document.getElementById("admin").checked      = data.roles?.admin      || false;
+
+  msg.innerText = "✅ تم تحميل بيانات المستخدم";
+};
+
+const uidInput = document.getElementById("uid");
+const nameInput = document.getElementById("name");
+const roleSelect = document.getElementById("role");
+const msg = document.getElementById("msg");
+</script>
+
+</body>
+</html>

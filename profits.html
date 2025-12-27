@@ -110,36 +110,87 @@ html, body {
 
 </div>
 
-<script>
-// ================= 🔐 حماية الصفحة =================
-const PASSWORD = "1234"; // ← غير كلمة السر هنا
+<script type="module">
+  import { 
+  getFirestore, 
+  collection, 
+  getDocs 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-(function protectPage(){
-  const allowed = sessionStorage.getItem("profit_access");
-  if(allowed === "true") return;
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-  const pass = prompt("🔐 أدخل كلمة السر لعرض الأرباح:");
-  if(pass === PASSWORD){
-    sessionStorage.setItem("profit_access","true");
-  }else{
-    alert("❌ كلمة السر غير صحيحة");
-    window.location.href = "dashboard.html";
+const firebaseConfig = {
+  apiKey: "AIzaSyDqudXSSUtolKjyN574DtiS592BKDxrrAo",
+  authDomain: "al-murad-cashier.firebaseapp.com",
+  projectId: "al-murad-cashier"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app); 
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    location.href = "index.html";
+    return;
   }
-})();
+
+  const snap = await getDocs(collection(db, "users"));
+  let currentUser = null;
+
+  snap.forEach(d => {
+    if (d.id === user.uid) currentUser = d.data();
+  });
+
+  const roles = currentUser.roles || {};
+
+// دعم الأدمن القديم والجديد
+const isAdmin =
+  currentUser.role === "admin" ||
+  roles.admin === true;
+
+// إذا مو أدمن ولا محاسب → ممنوع
+if (!isAdmin && !roles.accountant) {
+  alert("❌ لا تملك صلاحية عرض الأرباح");
+  location.href = "dashboard.html";
+}
+
+});
+
 
 // ================= 💰 حساب الأرباح =================
-const invoices = JSON.parse(localStorage.getItem("invoices") || "[]");
-const products = JSON.parse(localStorage.getItem("products") || "[]");
 
 const table = document.getElementById("table");
 const netProfitEl = document.getElementById("netProfit");
+let invoices = [];
+let products = [];
+
+async function loadData(){
+  // تحميل الفواتير
+  const invSnap = await getDocs(collection(db, "invoices"));
+  invoices = [];
+  invSnap.forEach(d => {
+    invoices.push(d.data());
+  });
+
+  // تحميل المنتجات
+  const prodSnap = await getDocs(collection(db, "products"));
+  products = [];
+  prodSnap.forEach(d => {
+    products.push(d.data());
+  });
+}
 
 function getBuyPrice(name){
   const p = products.find(x => x.name.trim() === name.trim());
   return p ? Number(p.buy) : 0;
 }
 
-function calcProfit(){
+async function calcProfit(){
+    await loadData();
+alert("Invoices: " + invoices.length + " | Products: " + products.length);
+
   const from = document.getElementById("from").value;
   const to   = document.getElementById("to").value;
 
@@ -193,6 +244,8 @@ function calcProfit(){
   netProfitEl.textContent =
     "صافي الربح: " + netProfit.toLocaleString("en-US") + " د.ع";
 }
+window.calcProfit = calcProfit;
+
 </script>
 
 </body>

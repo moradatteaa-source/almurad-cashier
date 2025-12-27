@@ -3,11 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>المنتجات</title>
+<title>المخزن</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
-    
 :root{
   --blue:#043B64;
   --orange:#FF6B2D;
@@ -52,29 +51,24 @@ button{
   color:white;
   border:none;
   border-radius:4px;
+  cursor:pointer;
 }
 .delete{
   background:#c0392b;
 }
-/* منع التقريب التلقائي عند الضغط على الحقول */
-input,
-select,
-textarea {
-  font-size: 16px !important;
-  -webkit-text-size-adjust: 100%;
+input,select,textarea{
+  font-size:16px !important;
 }
-
-/* تحسين سلوك اللمس ومنع zoom غير مرغوب */
-html, body {
+html, body{
   touch-action: manipulation;
 }
-
 </style>
 </head>
 
 <body>
 
-<header>🏬 المخزن</header>
+<header>🏬 المخزن المركزي</header>
+
 <div class="container" style="
   background:white;
   margin:10px;
@@ -83,114 +77,243 @@ html, body {
   gap:10px;
   align-items:center;
 ">
-  <input 
-    type="file" 
-    id="excelFile" 
-    accept=".xlsx,.xls"
-    style="flex:1"
+  <input type="file" id="excelFile" accept=".xlsx,.xls" style="flex:1">
+  <button onclick="importExcel()">📥 استيراد Excel</button>
+</div>
+<div class="container" style="background:white;margin:10px;border-radius:8px">
+  <input
+    type="text"
+    id="searchInput"
+    placeholder="🔍 بحث عن منتج..."
+    oninput="searchProducts(this.value)"
   >
-  <button onclick="importExcel()">📥 استيراد من Excel</button>
 </div>
 
 <div class="container">
-<table id="productsTable">
-<tr>
-  <th>المنتج</th>
-  <th>سعر الشراء</th>
-  <th>سعر البيع</th>
-  <th>الكمية</th>
-  <th>حذف</th>
-</tr>
-</table>
 
-<br>
-<button onclick="addRow()">➕ إضافة منتج</button>
+  <button onclick="addProduct()" style="margin-bottom:10px">
+    ➕ إضافة منتج
+  </button>
+
+  <table id="productsTable">
+    <tr>
+      <th>المنتج</th>
+      <th>سعر الشراء</th>
+      <th>سعر البيع</th>
+      <th>الكمية</th>
+      <th>حذف</th>
+    </tr>
+  </table>
+
 </div>
 
 
-<script>
-const table = document.getElementById("productsTable");
-let products = JSON.parse(localStorage.getItem("products") || "[]");
+<script type="module">
+/* 🔹 Firebase */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  getDoc,          // ✅ هذا السطر الناقص
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-function render(){
-  table.innerHTML = `
-  <tr>
-    <th>المنتج</th>
-    <th>سعر الشراء</th>
-    <th>سعر البيع</th>
-    <th>الكمية</th>
-    <th>حذف</th>
-  </tr>`;
-  products.forEach((p,i)=>{
-    const r = table.insertRow();
-    r.innerHTML = `
-      <td><input value="${p.name}" onchange="update(${i},'name',this.value)"></td>
-      <td><input type="number" value="${p.buy}" onchange="update(${i},'buy',this.value)"></td>
-      <td><input type="number" value="${p.sell}" onchange="update(${i},'sell',this.value)"></td>
-      <td><input type="number" value="${p.qty}" onchange="update(${i},'qty',this.value)"></td>
-      <td><button class="delete" onclick="remove(${i})">✖</button></td>
-    `;
-  });
-}
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-function addRow(){
-  products.push({name:"",buy:0,sell:0,qty:0});
-  save();
-}
+const firebaseConfig = {
+  apiKey: "AIzaSyDqudXSSUtolKjyN574DtiS592BKDxrrAo",
+  authDomain: "al-murad-cashier.firebaseapp.com",
+  projectId: "al-murad-cashier"
+};
 
-function update(i,key,val){
-  products[i][key]=val;
-  save();
-}
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-function remove(i){
-  products.splice(i,1);
-  save();
-}
-
-function save(){
-  localStorage.setItem("products",JSON.stringify(products));
-  render();
-}
-
-render();
-function importExcel(){
-  const fileInput = document.getElementById("excelFile");
-  if(!fileInput.files.length){
-    alert("اختر ملف Excel أولاً");
+/* 🔹 حماية الصفحة */
+onAuthStateChanged(auth, async user=>{
+  if(!user){
+    location.href = "index.html";
     return;
   }
 
-  const file = fileInput.files[0];
+  const snap = await getDoc(doc(db,"users",user.uid));
+
+  if(!snap.exists()){
+    location.href = "dashboard.html";
+    return;
+  }
+
+  const data = snap.data();
+  const roles = data.roles || {};
+
+  // دعم الأدمن القديم
+  if (data.role === "admin") {
+    roles.admin = true;
+  }
+
+  // ❌ لا يملك صلاحية
+  if (!roles.admin && !roles.store) {
+    alert("❌ لا تملك صلاحية المخزن");
+    location.href = "dashboard.html";
+    return;
+  }
+
+  // ✅ هنا الحل
+  loadProducts();
+});
+
+
+
+/* 🔹 المتغيرات */
+const table = document.getElementById("productsTable");
+let products = [];
+
+/* 🔹 تحميل المنتجات */
+async function loadProducts(){
+  products = [];
+  const snap = await getDocs(collection(db,"products"));
+  snap.forEach(d=>{
+    products.push({id:d.id, ...d.data()});
+  });
+  render();
+}
+
+/* 🔹 عرض الجدول */
+function render(){
+  table.innerHTML = `
+    <tr>
+      <th>المنتج</th>
+      <th>سعر الشراء</th>
+      <th>سعر البيع</th>
+      <th>الكمية</th>
+      <th>حذف</th>
+    </tr>
+  `;
+
+  products.forEach(p=>{
+    const r = table.insertRow();
+r.innerHTML = `
+<td><input value="${p.name || ''}" onchange="updateProduct('${p.id}','name',this.value)"></td>
+<td><input type="number" value="${p.buy || ''}" onchange="updateProduct('${p.id}','buy',this.value)"></td>
+<td><input type="number" value="${p.sell || ''}" onchange="updateProduct('${p.id}','sell',this.value)"></td>
+<td><input type="number" value="${p.qty || ''}" onchange="updateProduct('${p.id}','qty',this.value)"></td>
+<td>
+  <button class="delete" onclick="deleteProduct('${p.id}')">✖</button>
+</td>
+`;
+
+  });
+}
+
+/* 🔹 إضافة منتج */
+window.addProduct = async function(){
+  const ref = await addDoc(collection(db,"products"),{
+    name:"",
+    buy:"",
+    sell:"",
+    qty:"",
+    createdAt: serverTimestamp()
+  });
+
+  // ⬆️ ضيفه ببداية المصفوفة
+  products.unshift({
+    id: ref.id,
+    name:"",
+    buy:"",
+    sell:"",
+    qty:""
+  });
+
+  render();
+};
+window.searchProducts = function(text){
+  const q = text.trim().toLowerCase();
+
+  const filtered = products.filter(p =>
+    (p.name || "").toLowerCase().includes(q)
+  );
+
+  renderFiltered(filtered);
+};
+
+function renderFiltered(list){
+  table.innerHTML = `
+    <tr>
+      <th>المنتج</th>
+      <th>سعر الشراء</th>
+      <th>سعر البيع</th>
+      <th>الكمية</th>
+      <th>حذف</th>
+    </tr>
+  `;
+
+  list.forEach(p=>{
+    const r = table.insertRow();
+    r.innerHTML = `
+<td><input value="${p.name || ''}" onchange="updateProduct('${p.id}','name',this.value)"></td>
+<td><input type="number" value="${p.buy || ''}" onchange="updateProduct('${p.id}','buy',this.value)"></td>
+<td><input type="number" value="${p.sell || ''}" onchange="updateProduct('${p.id}','sell',this.value)"></td>
+<td><input type="number" value="${p.qty || ''}" onchange="updateProduct('${p.id}','qty',this.value)"></td>
+<td><button class="delete" onclick="deleteProduct('${p.id}')">✖</button></td>
+`;
+  });
+}
+
+/* 🔹 تحديث منتج */
+window.updateProduct = async function(id,key,val){
+  await updateDoc(doc(db,"products",id),{
+    [key]: key === "name" ? val : Number(val)
+  });
+};
+
+
+/* 🔹 حذف منتج */
+window.deleteProduct = async function(id){
+  if(!confirm("حذف المنتج؟")) return;
+  await deleteDoc(doc(db,"products",id));
+  loadProducts();
+};
+
+/* 🔹 استيراد Excel */
+window.importExcel = function(){
+  const fileInput = document.getElementById("excelFile");
+  if(!fileInput.files.length){
+    alert("اختر ملف Excel");
+    return;
+  }
+
   const reader = new FileReader();
-
-  reader.onload = function(e){
+  reader.onload = async e=>{
     const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, {type: "array"});
+    const workbook = XLSX.read(data,{type:"array"});
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, {header:1});
-
-    // حذف الهيدر
+    const rows = XLSX.utils.sheet_to_json(sheet,{header:1});
     rows.shift();
 
-    rows.forEach(r=>{
-      if(!r[0]) return;
-
-      products.push({
-        name: r[0] || "",
+    for(const r of rows){
+      if(!r[0]) continue;
+      await addDoc(collection(db,"products"),{
+        name: r[0],
         buy: Number(r[1]) || 0,
         sell: Number(r[2]) || 0,
-        qty: Number(r[3]) || 0
+        qty: Number(r[3]) || 0,
+        createdAt: serverTimestamp()
       });
-    });
+    }
 
-    save();
-    fileInput.value = "";
-    alert("تم استيراد المنتجات بنجاح ✅");
+    fileInput.value="";
+    alert("تم الاستيراد بنجاح ✅");
+    loadProducts();
   };
+  reader.readAsArrayBuffer(fileInput.files[0]);
+};
 
-  reader.readAsArrayBuffer(file);
-}
 
 </script>
 

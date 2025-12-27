@@ -236,8 +236,43 @@ html, body {
 <button class="save" onclick="saveInvoice()">💾 حفظ الفاتورة</button>
 
 </div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-<script>
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDqudXSSUtolKjyN574DtiS592BKDxrrAo",
+  authDomain: "al-murad-cashier.firebaseapp.com",
+  projectId: "al-murad-cashier"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+let currentUser = null;
+
+onAuthStateChanged(auth, async user=>{
+  if(!user){
+    location.href = "index.html";
+    return;
+  }
+  currentUser = user;
+
+  await loadProducts();   // 1️⃣ حمّل المنتجات أولاً
+
+  addRow();               // 2️⃣ أضف الصفوف بعدها
+  addRow();
+});
+
+
+
+  
     document.addEventListener("click", e=>{
   document.querySelectorAll(".dropdown").forEach(d=>{
     if(!d.contains(e.target) && !d.previousElementSibling.contains(e.target)){
@@ -256,8 +291,10 @@ function showAllProducts(input){
       input.value = p.name;
       box.style.display = "none";
       const row = input.closest("tr");
-      row.cells[1].textContent = f(p.sell);
-      calc();
+    row.dataset.unitPrice = p.sell;   // ⭐ هذا المهم
+row.cells[1].textContent = f(p.sell);
+calc();
+
     };
     box.appendChild(d);
   });
@@ -280,8 +317,10 @@ function showAllProducts(input){
         input.value=p.name;
         box.style.display="none";
         const row=input.closest("tr");
-        row.cells[1].textContent=f(p.sell);
-        calc();
+     row.dataset.unitPrice = p.sell;   // ⭐ هذا المهم
+row.cells[1].textContent = f(p.sell);
+calc();
+
       };
       box.appendChild(d);
     });
@@ -293,7 +332,20 @@ function showAllProducts(input){
 const f=n=>Number(n||0).toLocaleString("en-US")+" د.ع";
 const p=v=>Number(String(v).replace(/[^0-9]/g,""))||0;
 
-const products=JSON.parse(localStorage.getItem("products")||"[]");
+import { getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+let products = [];
+
+async function loadProducts(){
+  products = [];
+  const snap = await getDocs(collection(db,"products"));
+  snap.forEach(d=>{
+    products.push({
+      id: d.id,
+      ...d.data()
+    });
+  });
+}
 const table=document.getElementById("table");
 const grandEl=document.getElementById("grand");
 const paidEl=document.getElementById("paid");
@@ -310,6 +362,8 @@ let isCredit=false;
 // إنشاء الصفوف
 function addRow(){
   const r = table.insertRow();
+  r.dataset.unitPrice = 0;
+
   r.innerHTML = `
     <td class="product">
 <input 
@@ -322,7 +376,14 @@ function addRow(){
     </td>
     <td>0 د.ع</td>
     <td class="qty">
-      <input type="number" min="1" value="1" oninput="calc()">
+<input 
+  type="number" 
+  min="1" 
+  value="1" 
+  oninput="multiplyRow(this)" 
+  onchange="multiplyRow(this)"
+>
+
     </td>
     <td>0 د.ع</td>
     <td>
@@ -354,26 +415,44 @@ function updateRow(sel){
   r.cells[1].textContent=prod?f(prod.sell):f(0);
   calc();
 }
+function multiplyRow(qtyInput){
+  const row = qtyInput.closest("tr");
+
+  const price = Number(row.dataset.unitPrice || 0);
+  const qty = Number(qtyInput.value || 0);
+
+  const sum = price * qty;
+
+  row.cells[3].textContent = f(sum);
+
+  calc(); // تحديث المجموع الكلي
+}
 
 function calc(){
-  let total=0;
-for(let i=1;i<table.rows.length;i++){
-    const r=table.rows[i];
-    const price=p(r.cells[1].textContent);
-    const qty=Number(r.cells[2].children[0].value||0);
-    const sum=price*qty;
-    r.cells[3].textContent=f(sum);
-    total+=sum;
+  let total = 0;
+
+  for(let i = 1; i < table.rows.length; i++){
+    const r = table.rows[i];
+
+    const unitPrice = Number(r.dataset.unitPrice || 0); // ⭐ السعر الحقيقي
+    const qty = Number(r.cells[2].children[0].value || 0);
+
+    const sum = unitPrice * qty; // ✅ الضرب الصحيح
+    r.cells[3].textContent = f(sum);
+
+    total += sum;
   }
-  grandEl.textContent=f(total);
+
+  grandEl.textContent = f(total);
 
   if(!isCredit){
-    paidEl.value=total;
-    restEl.textContent=f(0);
+    paidEl.value = total;
+    restEl.textContent = f(0);
   }else{
-    restEl.textContent=f(total-Number(paidEl.value||0));
+    restEl.textContent = f(total - Number(paidEl.value || 0));
   }
 }
+
 
 paidEl.oninput=calc;
 
@@ -402,22 +481,18 @@ function resetRows(){
   for(let i = 1; i < table.rows.length; i++){
     const r = table.rows[i];
 
-    // اسم المنتج
+    r.dataset.unitPrice = 0; // ← أضف هذا السطر
+
     r.cells[0].querySelector("input").value = "";
-
-    // السعر
     r.cells[1].textContent = "0 د.ع";
-
-    // الكمية
     r.cells[2].querySelector("input").value = 1;
-
-    // المجموع
     r.cells[3].textContent = "0 د.ع";
   }
 }
 
+
 // حفظ
-function saveInvoice(){
+async function saveInvoice(){
   const items=[];
 for(let i=1;i<table.rows.length;i++){
     const r=table.rows[i];
@@ -427,7 +502,16 @@ for(let i=1;i<table.rows.length;i++){
       const qty=Number(r.cells[2].children[0].value);
       if(qty>prod.qty){alert("الكمية غير كافية: "+name);return;}
       items.push({product:name,qty,price:prod.sell,total:prod.sell*qty});
-      prod.qty-=qty;
+// خصم الكمية من المخزن (Firestore)
+await updateDoc(
+  doc(db, "products", prod.id),
+  {
+    qty: prod.qty - qty
+  }
+);
+
+// تحديث الكمية محليًا
+prod.qty -= qty;
     }
   }
   if(!items.length){alert("ماكو مواد");return;}
@@ -438,19 +522,33 @@ for(let i=1;i<table.rows.length;i++){
     debtor={name:debtorName.value,phone:debtorPhone.value,note:debtorNote.value};
   }
 
-  localStorage.setItem("products",JSON.stringify(products));
-  const invs=JSON.parse(localStorage.getItem("invoices")||"[]");
-  invs.push({
-    invoiceNo:invoice,
-date: new Date().toLocaleDateString("en-CA"), // YYYY-MM-DD محلي
+  localStorage.setItem("products", JSON.stringify(products));
+
+try {
+  await addDoc(collection(db, "invoices"), {
+    invoiceNo: invoice,
+    date: new Date().toLocaleDateString("en-CA"),
     items,
-    grand:p(grandEl.textContent),
-    paid:Number(paidEl.value||0),
-    rest:isCredit?p(restEl.textContent):0,
-    payType:isCredit?"دين":"نقد",
-    debtor
+    grand: p(grandEl.textContent),
+    paid: Number(paidEl.value || 0),
+    rest: isCredit ? p(restEl.textContent) : 0,
+    payType: isCredit ? "دين" : "نقد",
+    debtor,
+    cashierId: currentUser.uid,
+    cashierEmail: currentUser.email,
+    createdAt: serverTimestamp()
   });
-  localStorage.setItem("invoices",JSON.stringify(invs));
+
+  console.log("✅ Invoice saved successfully");
+
+} catch (err) {
+  console.error("❌ FAILED TO SAVE INVOICE", err);
+  alert("خطأ بالحفظ — افتح الكونسول");
+  return;
+}
+
+
+  
 // خزّن الرقم الجديد
 // خزّن الرقم الجديد
 localStorage.setItem("invoiceNo", invoice + 1);
@@ -481,8 +579,17 @@ grandEl.textContent = f(0);
 restEl.textContent = f(0);
 
 }
-addRow();
-addRow();
+
+// 🔗 expose functions to HTML (required for type="module")
+window.addRow = addRow;
+window.removeRow = removeRow;
+window.showAllProducts = showAllProducts;
+window.filterProducts = filterProducts;
+window.setCash = setCash;
+window.setCredit = setCredit;
+window.saveInvoice = saveInvoice;
+
+window.multiplyRow = multiplyRow;
 
 </script>
 

@@ -101,67 +101,100 @@ th{
 <body>
 
 <header>📄 الديون (مجمّعة حسب الزبون)</header>
-
 <div class="container" id="list"></div>
 
-<script>
-// أدوات
+<script type="module">
+/* ========= Firebase ========= */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  query,
+  where,
+  updateDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDqudXSSUtolKjyN574DtiS592BKDxrrAo",
+  authDomain: "al-murad-cashier.firebaseapp.com",
+  projectId: "al-murad-cashier"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+/* ========= أدوات ========= */
 const f = n => Number(n || 0).toLocaleString("en-US") + " د.ع";
-
-// قراءة الفواتير
-let invoices = JSON.parse(localStorage.getItem("invoices") || "[]");
-
-// فلترة الديون فقط
-const debtInvoices = invoices.filter(
-  i => i.payType === "دين" && i.rest > 0 && i.debtor
-);
-
-// تجميع حسب رقم الهاتف
-const customers = {};
-debtInvoices.forEach(inv => {
-  const phone = inv.debtor.phone || "بدون";
-  if (!customers[phone]) {
-    customers[phone] = {
-      name: inv.debtor.name,
-      phone,
-      invoices: [],
-      total: 0
-    };
-  }
-  customers[phone].invoices.push(inv);
-  customers[phone].total += inv.rest;
-});
-
 const list = document.getElementById("list");
+let invoices = [];
 
-if (Object.keys(customers).length === 0) {
-  list.innerHTML = `<div class="empty">ماكو ديون مسجلة</div>`;
-} else {
+/* ========= تحميل الديون ========= */
+async function loadDebts() {
+  invoices = [];
+  list.innerHTML = "";
+
+  const q = query(
+    collection(db, "invoices"),
+    where("payType", "==", "دين"),
+    where("rest", ">", 0)
+  );
+
+  const snap = await getDocs(q);
+  snap.forEach(d => invoices.push({ id: d.id, ...d.data() }));
+
+  renderDebts();
+}
+
+/* ========= عرض الديون ========= */
+function renderDebts() {
+  if (!invoices.length) {
+    list.innerHTML = `<div class="empty">ماكو ديون مسجلة</div>`;
+    return;
+  }
+
+  const customers = {};
+
+  invoices.forEach(inv => {
+    const phone = inv.debtor?.phone || "بدون";
+    if (!customers[phone]) {
+      customers[phone] = {
+        name: inv.debtor?.name || "زبون",
+        phone,
+        invoices: [],
+        total: 0
+      };
+    }
+    customers[phone].invoices.push(inv);
+    customers[phone].total += inv.rest;
+  });
+
   Object.values(customers).forEach(cust => {
     const div = document.createElement("div");
     div.className = "customer";
 
     let invoicesHTML = "";
-
     cust.invoices.forEach(inv => {
-      let itemsRows = "";
+      let rows = "";
       inv.items.forEach(it => {
-        itemsRows += `
+        rows += `
           <tr>
             <td>${it.product}</td>
             <td>${it.qty}</td>
             <td>${f(it.price)}</td>
             <td>${f(it.total)}</td>
-          </tr>
-        `;
+          </tr>`;
       });
 
       invoicesHTML += `
         <div style="margin-top:10px;border-top:1px dashed #ccc;padding-top:10px">
-          <div style="font-weight:bold;margin-bottom:5px">
-            🧾 فاتورة #${inv.invoiceNo} — ${inv.date}
-          </div>
-
+<b>🧾 فاتورة #${inv.invoiceNo}</b>
+<div style="font-size:12px;color:#555;margin-top:4px">
+  👤 الكاشير: ${inv.cashierEmail || "غير معروف"}
+</div>
           <table>
             <tr>
               <th>المنتج</th>
@@ -169,14 +202,12 @@ if (Object.keys(customers).length === 0) {
               <th>السعر</th>
               <th>المجموع</th>
             </tr>
-            ${itemsRows}
+            ${rows}
           </table>
-
-          <div style="text-align:left;margin-top:6px;color:#c0392b;font-weight:bold">
-            المتبقي على الفاتورة: ${f(inv.rest)}
+          <div style="color:#c0392b;font-weight:bold">
+            المتبقي: ${f(inv.rest)}
           </div>
-        </div>
-      `;
+        </div>`;
     });
 
     div.innerHTML = `
@@ -200,45 +231,41 @@ if (Object.keys(customers).length === 0) {
   });
 }
 
-// دالة التسديد (FIFO)
-function pay(phone) {
+/* ========= التسديد FIFO ========= */
+window.pay = async function(phone) {
   const input = document.getElementById("pay-" + phone);
   let amount = Number(input.value || 0);
-  if (amount <= 0) {
-    alert("أدخل مبلغ صحيح");
-    return;
-  }
+  if (amount <= 0) return alert("أدخل مبلغ صحيح");
 
   const invs = invoices
-    .filter(
-      i =>
-        i.payType === "دين" &&
-        i.debtor &&
-        i.debtor.phone === phone &&
-        i.rest > 0
-    )
+    .filter(i => i.debtor?.phone === phone && i.rest > 0)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   for (let inv of invs) {
     if (amount <= 0) break;
 
-    if (amount >= inv.rest) {
-      amount -= inv.rest;
-      inv.paid += inv.rest;
-      inv.rest = 0;
-    } else {
-      inv.paid += amount;
-      inv.rest -= amount;
-      amount = 0;
-    }
+    const paidNow = Math.min(amount, inv.rest);
+    amount -= paidNow;
+
+    await updateDoc(doc(db, "invoices", inv.id), {
+      paid: (inv.paid || 0) + paidNow,
+      rest: inv.rest - paidNow
+    });
   }
 
-  localStorage.setItem("invoices", JSON.stringify(invoices));
   alert("تم التسديد ✅");
-  location.reload();
-}
-</script>
+  loadDebts();
+};
 
+/* ========= تشغيل ========= */
+onAuthStateChanged(auth, user => {
+  if (!user) {
+    location.href = "index.html";
+    return;
+  }
+  loadDebts();
+});
+</script>
 
 </body>
 </html>
